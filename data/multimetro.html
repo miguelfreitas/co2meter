@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <title>Multimetro AScan</title>
+        <script type="text/javascript" src="excanvas.js"></script>
+        <script type="text/javascript" src="chart.js"></script>
+        <script type="text/javascript" src="canvaschartpainter.js"></script>
+
+        <link rel="stylesheet" type="text/css" href="canvaschart.css" />
+        <style type="text/css">
+                html, body { border: none; padding: 0px; margin: 0px; }
+        </style>
+        <!-- <meta http-equiv="refresh" content="2;URL='/multimetro?channel={channel}'"/> -->
+
+        <!-- script type="text/javascript">
+            document.getElementById("ChannelTextbox").addEventListener(
+                "keydown", function(e) {
+                   if (!e) { var e = window.event; }
+                   e.preventDefault(); // sometimes useful
+                   // Enter is pressed
+                   if (e.keyCode == 13) { submitFunction(); }
+                }, false);
+        </script -->
+  </head>
+
+  <body>
+
+        <div id="chart" class="chart" style="width: 800px; height: 400px;"></div>
+        <!-- <script type="text/javascript" src="jquery.min.js"></script> -->
+        <script type="text/javascript" src="multimetroData"></script>
+        <script type="text/javascript">
+            var chartInst;
+
+            function initDraw() {
+                chartInst = new Chart(document.getElementById('chart'));
+                chartInst.setDefaultType(CHART_LINE);
+            }
+
+            function ReqDataDraw() {
+                chartInst.setGridDensity(parseInt(data['gridx']),parseInt(data['gridy']));
+
+                chartInst.setVerticalRange(parseInt(data['miny']),parseInt(data['maxy']));
+
+                var arrayVLabels = data['vlabels'];
+                for (var i = 0; i < arrayVLabels.length; i++) {
+                    arrayVLabels[i] = parseInt(arrayVLabels[i]);
+                }
+                chartInst.setVerticalLabels(arrayVLabels);
+
+                var arrayHLabels = data['hlabels'];
+                /*for (var i = 0; i < arrayHLabels.length; i++) {
+                    arrayHLabels[i] = parseInt(arrayHLabels[i]);
+                }*/
+                chartInst.setHorizontalLabels(arrayHLabels);
+                
+                //chartInst.setShowLegend(parseInt(data['showlabel']));
+
+                var arrayAscanData = data['ascandata'];
+                for (var i = 0; i < arrayAscanData.length; i++) {
+                    arrayAscanData[i] = parseInt(arrayAscanData[i]);
+                }
+
+                chartInst.clear();
+                chartInst.add(data['label'], data['color'], arrayAscanData);
+                chartInst.draw();
+            }
+
+            window.onload = function() {
+                initDraw();
+                ReqDataDraw();
+                //window.setInterval("ReqDataDraw();",60*1000);
+            };
+        </script>
+
+        <div>
+            <a href="/">Retorna</a>
+        </div>
+  </body>
+</html>
