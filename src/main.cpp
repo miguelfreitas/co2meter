@@ -195,7 +195,7 @@ void setup() {
         int hlabels=10;
         int vlabels=11;
         int time_idx = -1, time_val = 0;
-        int lastval = 400;
+        int lastval;
 
         response->print("data={");
 
@@ -224,6 +224,7 @@ void setup() {
 
         response->print("\"ascandata\":[");
 
+        lastval = miny;
         for(i=0;i<co2_list_size();i++) {
             int val = read_co2_val(i);
             // clipa zeros and time marks for graph
