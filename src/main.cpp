@@ -35,6 +35,9 @@ const char* password = "meterco2";
 
 unsigned long getDataTimer = 0;
 
+uint16_t sum_co2_avg = 0;
+uint16_t num_co2_avg = 0;
+
 int co2_head;
 int co2_tail;
 
@@ -320,7 +323,7 @@ void setup() {
 }
 
 void loop() {
-    if (millis() - getDataTimer >= 60000) 
+    if (millis() - getDataTimer >= 10000)
     {
 
         Serial.println("------------------");
@@ -349,7 +352,12 @@ void loop() {
                 Serial.println(" threshold passed");   
              /* Sanity check vs Raw CO2 (has Span/Zero failed) or straight to your Alarm code */
            } else {
-                store_co2_val(CO2Unlimited);
+                sum_co2_avg += CO2Unlimited;
+                num_co2_avg += 1;
+                if( num_co2_avg >= 6 ) {
+                    store_co2_val(sum_co2_avg/num_co2_avg);
+                    sum_co2_avg = num_co2_avg = 0;
+                }
            }
         }
         getDataTimer = millis(); // Update interval
