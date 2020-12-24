@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #ifdef ESP32
 #include <WiFi.h>
+#include <dhcpserver/dhcpserver.h>
 #include <AsyncTCP.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -38,24 +39,23 @@ unsigned long getDataTimer = 0;
 uint16_t sum_co2_avg = 0;
 uint16_t num_co2_avg = 0;
 
-int co2_head;
-int co2_tail;
+uint16_t co2_head;
+uint16_t co2_tail;
 
-void init_co2_storage()
-{
-    EEPROM.begin(EEPROM_SIZE);
-    co2_head = EEPROM.read(EEPROM_SIZE - 2);
-    co2_tail = EEPROM.read(EEPROM_SIZE - 1);
-}
+#define RAM_CO2_MAX_VALS 1024
+uint16_t ram_co2_list[RAM_CO2_MAX_VALS];
+uint16_t ram_co2_head;
+uint16_t ram_co2_tail;
 
-void save_co2_pointers_commit()
+
+void eeprom_save_co2_pointers_commit()
 {
     EEPROM.write(EEPROM_SIZE - 2, co2_head);
     EEPROM.write(EEPROM_SIZE - 1, co2_tail);
     EEPROM.commit();
 }
 
-void store_co2_val(uint16_t val)
+void eeprom_store_co2_val(uint16_t val)
 {
     EEPROM.write(co2_head*2 + 0, (uint8_t) (val & 0xff));
     EEPROM.write(co2_head*2 + 1, (uint8_t) (val >> 8));
@@ -63,10 +63,19 @@ void store_co2_val(uint16_t val)
     if (co2_head == co2_tail) {
         co2_tail = (co2_tail+1) % CO2_MAX_VALS;
     }
-    save_co2_pointers_commit();
+    eeprom_save_co2_pointers_commit();
 }
 
-uint16_t read_co2_val(int pos)
+void store_co2_val(uint16_t val)
+{
+    ram_co2_list[ram_co2_head] = val;
+    ram_co2_head = (ram_co2_head+1) % RAM_CO2_MAX_VALS;
+    if (ram_co2_head == ram_co2_tail) {
+        ram_co2_tail = (ram_co2_tail+1) % RAM_CO2_MAX_VALS;
+    }
+}
+
+uint16_t eeprom_read_co2_val(int pos)
 {
     uint16_t val;
     int ptr = (pos + co2_tail) % CO2_MAX_VALS;
@@ -75,7 +84,13 @@ uint16_t read_co2_val(int pos)
     return val;
 }
 
-uint8_t co2_list_size()
+uint16_t read_co2_val(int pos)
+{
+    int ptr = (pos + ram_co2_tail) % RAM_CO2_MAX_VALS;
+    return ram_co2_list[ptr];
+}
+
+uint16_t eeprom_co2_list_size()
 {
     if (co2_head >= co2_tail) {
         return co2_head - co2_tail;
@@ -84,15 +99,65 @@ uint8_t co2_list_size()
     }
 }
 
+uint16_t co2_list_size()
+{
+    if (ram_co2_head >= ram_co2_tail) {
+        return ram_co2_head - ram_co2_tail;
+    } else {
+        return RAM_CO2_MAX_VALS - ram_co2_tail + ram_co2_head;
+    }
+}
+
+void init_co2_storage()
+{
+    int i;
+    EEPROM.begin(EEPROM_SIZE);
+    co2_head = EEPROM.read(EEPROM_SIZE - 2);
+    co2_tail = EEPROM.read(EEPROM_SIZE - 1);
+
+    // load from EEPROM to RAM
+    ram_co2_head = ram_co2_tail = 0;
+    for(i=0;i<eeprom_co2_list_size();i++) {
+        store_co2_val(eeprom_read_co2_val(i));
+    }
+}
+
 void reset_co2_list()
 {
     co2_head = co2_tail = 0;
-    save_co2_pointers_commit();
+    eeprom_save_co2_pointers_commit();
+    ram_co2_head = ram_co2_tail = 0;
 }
 
 
 void notFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
+}
+
+void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info)
+{
+  Serial.println("------------");
+  Serial.println("Station connected");
+  for(int i = 0; i< 6; i++){
+    Serial.printf("%02X", info.sta_connected.mac[i]);  
+    if(i<5)Serial.print(":");
+  }
+  Serial.println();
+}
+ 
+void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
+{
+  Serial.println("------------");
+  Serial.println("Station disconnected");
+  for(int i = 0; i< 6; i++){
+    Serial.printf("%02X", info.sta_disconnected.mac[i]);  
+    if(i<5)Serial.print(":");
+  }
+  Serial.println();
+  /*
+  tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
+  tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
+  */
 }
 
 void setup() {
@@ -103,6 +168,7 @@ void setup() {
     init_co2_storage();
 
     // salva um zero para marcar o boot
+    eeprom_store_co2_val(0x00);
     store_co2_val(0x00);
 
     if(SPIFFS.begin()) {
@@ -130,6 +196,9 @@ void setup() {
     Serial.print("Setting AP (Access Point)…");
     // Remove the password parameter, if you want the AP (Access Point) to be open
     WiFi.softAP(ssid, password);
+    WiFi.onEvent(WiFiStationConnected, SYSTEM_EVENT_AP_STACONNECTED);
+    WiFi.onEvent(WiFiStationDisconnected, SYSTEM_EVENT_AP_STADISCONNECTED);
+
     IPAddress IP = WiFi.softAPIP();
     Serial.print("AP IP address: ");
     Serial.println(IP);
@@ -286,6 +355,7 @@ void setup() {
         val = message.toInt();
 
         store_co2_val(val);
+        eeprom_store_co2_val(val);
         request->send(200, "text/plain", message );
     });
 
@@ -354,9 +424,15 @@ void loop() {
            } else {
                 sum_co2_avg += CO2Unlimited;
                 num_co2_avg += 1;
+                // note: 6 x 5000 = 30000 ok for uint16_t
                 if( num_co2_avg >= 6 ) {
-                    store_co2_val(sum_co2_avg/num_co2_avg);
+                    int16_t avg_val;
+                    avg_val = sum_co2_avg/num_co2_avg;
+                    store_co2_val(avg_val);
+                    eeprom_store_co2_val(avg_val);
                     sum_co2_avg = num_co2_avg = 0;
+                    Serial.print("... CO2 PPM avg: "); 
+                    Serial.println(avg_val);
                 }
            }
         }
