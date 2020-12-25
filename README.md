@@ -52,7 +52,7 @@ The CO2 data history is a circular buffer containing the last 1024 values, unles
 
 CO2 graph looks like this:
 
-<img src="images/co2_graph_example.png" width="300" border="1">
+<img src="images/co2_graph_example.png" width="500" border="1">
 
 ## Caveats
 
