@@ -2,7 +2,7 @@
 
 A cheap and dirty CO2 meter using MH-Z19B sensor (US$20) and ESP32-WROOM devkit board (US$5). With the addition of an USB powerbank you get a portable CO2 meter reporting directly to your smartphone using WIFI.
 
-This is a quite useful gadget to have for the Covid-19 pandemic. Since CO2 level is a good [infection risk proxy](Exhaled CO2 as COVID-19 infection risk proxy for different indoor environments and activities) as "how many times has this air been breathed before" you may use it to survey the places you go in order to leave ASAP those dangerous, poorly ventilated spaces.
+This is a quite useful gadget to have for the Covid-19 pandemic. Since CO2 level is a good [infection risk proxy](https://www.medrxiv.org/content/10.1101/2020.09.09.20191676v1) as "how many times has this air been breathed before" you may use it to survey the places you go in order to leave ASAP those dangerous, poorly ventilated spaces.
 
 <img src="images/mh-z19b_esp32_powerbank.jpg" width="600">
 
